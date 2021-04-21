@@ -1,1 +1,1 @@
-# deployment-details
+# k8s-deployment
