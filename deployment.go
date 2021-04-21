@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
+	"os"
 	"path/filepath"
 
 	//appsv1 "k8s.io/api/apps/v1"
@@ -12,8 +12,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+
 	//"k8s.io/client-go/util/retry"
 	//
+	"github.com/olekukonko/tablewriter"
 )
 
 func main() {
@@ -24,7 +26,7 @@ func main() {
 	} else {
 		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
 	}
-	namespace = flag.String("namespace", "default", "Specify namespace. Default is default")
+	namespace = flag.String("namespace", "", "Specify namespace. Default is default")
 	flag.Parse()
 
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -41,17 +43,21 @@ func main() {
 	deploymentsClient := clientset.AppsV1().Deployments(*namespace)
 
 	// List Deployments
-	fmt.Printf("Listing deployments in namespace %q:\n", *namespace)
+	// fmt.Printf("Listing deployments in namespace %q:\n", *namespace)
 	list, err := deploymentsClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Deployment                Image                  Last Update Time")
-	for _, d := range list.Items {
-		//		fmt.Printf(" * %s (%d replicas)\n", d.Name, *d.Spec.Replicas)
-		fmt.Println(d.Name, "    ", *&d.Spec.Template.Spec.Containers[0].Image, "    ", *&d.Status.Conditions[1].LastUpdateTime)
-	}
 
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Deployment", "Image", "Last Update"})
+	for _, d := range list.Items {
+		lastUpdateTime := *&d.Status.Conditions[1].LastUpdateTime
+		updateTime := lastUpdateTime.String()
+		v := []string{d.Name, *&d.Spec.Template.Spec.Containers[0].Image, updateTime}
+		table.Append(v)
+	}
+	table.Render()
 }
 
 func int32Ptr(i int32) *int32 { return &i }
